@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双人打卡表 — 考研 · 雅思</title>
+<style>
+  :root {
+    --kaoyan:       #4A6FA5;
+    --kaoyan-light: #EBF0F7;
+    --ielts:        #4A9E7B;
+    --ielts-light:  #EDF7F2;
+    --sleep:        #F5F5F5;
+    --text:         #2C2C2C;
+    --text-dim:     #999;
+    --border:       #E8E8E8;
+    --bg:           #FAFAFA;
+    --card:         #FFFFFF;
+    --current:      #FFF9E6;
+    --radius:       8px;
+    --shadow:       0 1px 3px rgba(0,0,0,.06);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.5; min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 14px 24px; display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    position: sticky; top: 0; z-index: 10; box-shadow: var(--shadow);
+  }
+  .header-left { display:flex; align-items:center; gap:16px; }
+  .header-title { font-size:20px; font-weight:700; letter-spacing:.5px; }
+  .header-title .kaoyan-dot { color: var(--kaoyan); }
+  .header-title .ielts-dot  { color: var(--ielts);  }
+  .header-title .sep { color:#CCC; margin:0 6px; }
+
+  .conn-status {
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; padding:4px 10px; border-radius:12px;
+    background:#F5F5F5; white-space:nowrap;
+  }
+  .conn-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .conn-dot.online  { background:#4CAF50; box-shadow:0 0 4px #4CAF50; }
+  .conn-dot.offline { background:#CCC; }
+  .conn-dot.syncing { background:#FFB74D; animation:pulse .8s infinite; }
+  @keyframes pulse { 50% { opacity:0.4; } }
+
+  .date-nav { display:flex; align-items:center; gap:8px; }
+  .date-nav button {
+    width:34px; height:34px; border:1px solid var(--border);
+    border-radius:var(--radius); background:var(--card);
+    cursor:pointer; font-size:16px; display:flex;
+    align-items:center; justify-content:center; transition:.15s; color:var(--text);
+  }
+  .date-nav button:hover { background:#F0F0F0; }
+  .date-nav .date-display { font-weight:600; font-size:15px; min-width:130px; text-align:center; }
+  .btn-today { font-size:13px !important; width:auto !important; padding:0 12px !important; color:var(--kaoyan) !important; font-weight:600 !important; }
+
+  /* Stats bar */
+  .stats-bar {
+    display:flex; gap:20px; padding:10px 24px;
+    font-size:13px; color:var(--text-dim); align-items:center;
+  }
+  .stat-item { display:flex; align-items:center; gap:6px; }
+  .stat-dot { width:8px; height:8px; border-radius:2px; display:inline-block; }
+  .stat-dot.kaoyan { background:var(--kaoyan); }
+  .stat-dot.ielts  { background:var(--ielts);  }
+  .stat-num { font-weight:700; color:var(--text); }
+
+  /* Table */
+  .table-wrap {
+    margin:0 24px 24px; background:var(--card);
+    border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
+  }
+  .table-scroll { overflow-x:auto; max-height:calc(100vh - 190px); overflow-y:auto; }
+  table { width:100%; border-collapse:collapse; min-width:640px; table-layout:fixed; }
+  thead th {
+    position:sticky; top:0; background:var(--card); z-index:2;
+    padding:14px 12px; font-size:13px; font-weight:700;
+    text-align:center; border-bottom:2px solid var(--border); letter-spacing:.5px;
+  }
+  thead th.col-time   { width:80px;  color:var(--text-dim); }
+  thead th.col-kaoyan { width:auto;  color:var(--kaoyan); background:var(--kaoyan-light); }
+  thead th.col-ielts  { width:auto;  color:var(--ielts);  background:var(--ielts-light);  }
+  thead th .col-icon {
+    display:inline-block; width:18px; height:18px; line-height:18px;
+    border-radius:50%; font-size:11px; color:#fff; margin-right:4px; vertical-align:-2px;
+  }
+  thead th .col-icon.kaoyan { background:var(--kaoyan); }
+  thead th .col-icon.ielts  { background:var(--ielts);  }
+
+  tbody td { padding:0; border-bottom:1px solid var(--border); height:52px; transition:background .3s; }
+  tbody tr.sleep-row td { background:var(--sleep); height:36px; }
+  tbody tr.sleep-row .cell-time { color:#CCC; font-size:11px; }
+  tbody tr.current-row td { background:var(--current) !important; }
+  tbody tr.current-row td.cell-time { font-weight:700; }
+
+  td.cell-time {
+    text-align:center; font-size:12px; color:var(--text-dim);
+    white-space:nowrap; padding:8px 6px !important; width:80px;
+    font-variant-numeric:tabular-nums;
+  }
+  td.cell-task { cursor:pointer; padding:0 !important; position:relative; }
+  td.cell-task:hover .task-inner { background:rgba(0,0,0,.03); }
+
+  /* Remote flash */
+  td.cell-task.flash-remote .task-inner {
+    animation:flashPulse .8s ease-out; border-radius:3px;
+  }
+  @keyframes flashPulse {
+    0%   { box-shadow:inset 0 0 0 0 rgba(74,111,165,.3); }
+    50%  { box-shadow:inset 0 0 0 20px rgba(74,111,165,.15); }
+    100% { box-shadow:inset 0 0 0 0 rgba(74,111,165,0); }
+  }
+
+  .task-inner {
+    display:flex; align-items:center; justify-content:center;
+    height:100%; min-height:52px; padding:4px 24px 4px 8px;
+    transition:background .15s; position:relative;
+  }
+  .task-text { font-size:13px; text-align:center; color:var(--text); pointer-events:none; word-break:break-all; }
+  .task-text.done  { color:#AAA; text-decoration:line-through; }
+  .task-text.empty { color:#DDD; font-style:italic; font-size:12px; }
+
+  .done-dot {
+    position:absolute; top:6px; right:6px; width:16px; height:16px;
+    border-radius:50%; border:2px solid #DDD; background:#fff;
+    cursor:pointer; transition:.15s; flex-shrink:0;
+  }
+  .done-dot.checked { border-color:#4CAF50; background:#4CAF50; }
+  .done-dot.checked::after {
+    content:'✓'; color:#fff; font-size:10px;
+    position:absolute; top:-1px; left:2px; font-weight:700;
+  }
+  td.cell-task:hover .done-dot { border-color:#BBB; }
+
+  .task-edit {
+    width:100%; height:100%; min-height:52px; border:2px solid var(--kaoyan);
+    border-radius:2px; font-size:13px; text-align:center; font-family:inherit;
+    padding:4px 8px; outline:none; resize:none; background:#fff; color:var(--text);
+  }
+  td.ielts-cell .task-edit { border-color:var(--ielts); }
+
+  .sleep-badge { font-size:11px; color:#CCC; text-align:center; letter-spacing:2px; }
+
+  /* Footer */
+  .footer-bar { display:flex; gap:10px; padding:0 24px 24px; flex-wrap:wrap; }
+  .footer-bar button {
+    padding:8px 18px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--card); cursor:pointer; font-size:13px; transition:.15s; color:var(--text);
+  }
+  .footer-bar button:hover { background:#F0F0F0; }
+  .footer-bar button.danger { color:#E57373; }
+  .footer-bar button.danger:hover { background:#FFF0F0; border-color:#FFCDD2; }
+  .footer-bar .legend {
+    margin-left:auto; display:flex; align-items:center; gap:16px;
+    font-size:12px; color:var(--text-dim);
+  }
+  .legend-item { display:flex; align-items:center; gap:4px; }
+  .legend-box {
+    width:12px; height:12px; border-radius:3px; display:inline-block;
+  }
+  .legend-box.kaoyan  { background:var(--kaoyan-light); border:1px solid var(--kaoyan); }
+  .legend-box.ielts   { background:var(--ielts-light);  border:1px solid var(--ielts);  }
+  .legend-box.sleep   { background:var(--sleep);        border:1px solid #DDD;          }
+  .legend-box.current { background:var(--current);      border:1px solid #F0D86E;       }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+    background:#333; color:#fff; padding:10px 24px; border-radius:20px;
+    font-size:13px; z-index:100; opacity:0; transition:opacity .3s; pointer-events:none;
+  }
+  .toast.show { opacity:1; }
+
+  @media (max-width:600px) {
+    .header { padding:10px 12px; }
+    .header-title { font-size:16px; }
+    .table-wrap { margin:0 6px 12px; }
+    .stats-bar { padding:6px 12px; gap:10px; font-size:11px; }
+    .footer-bar { padding:0 6px 12px; }
+    td.cell-task .task-text { font-size:11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-title">
+      <span class="kaoyan-dot">●</span> 考研
+      <span class="sep">·</span>
+      <span class="ielts-dot">●</span> 雅思
+      <span class="sep">—</span> 双人打卡表
+    </div>
+    <div class="conn-status" id="connStatus" title="同步状态">
+      <span class="conn-dot syncing" id="connDot"></span>
+      <span id="connLabel">连接中…</span>
+    </div>
+  </div>
+
+  <div class="date-nav">
+    <button onclick="changeDate(-1)" title="前一天 Ctrl+←">◀</button>
+    <span class="date-display" id="dateDisplay"></span>
+    <button onclick="changeDate(1)" title="后一天 Ctrl+→">▶</button>
+    <button class="btn-today" onclick="goToday()" title="回到今天 Ctrl+T">今天</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-dot kaoyan"></span> 考研完成
+    <span class="stat-num" id="statKaoyan">0</span>/<span id="statKaoyanTotal">18</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-dot ielts"></span> 雅思完成
+    <span class="stat-num" id="statIelts">0</span>/<span id="statIeltsTotal">18</span>
+  </div>
+  <div class="stat-item" style="margin-left:auto;" id="onlineHint">
+    💡 点击格子编辑 · 点击圆圈 ✓ 打卡
+  </div>
+</div>
+
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-time">时间</th>
+          <th class="col-kaoyan"><span class="col-icon kaoyan">研</span>考研</th>
+          <th class="col-ielts"><span class="col-icon ielts">雅</span>雅思</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <button onclick="resetDefaults()">📋 恢复默认模板</button>
+  <button onclick="clearDay()" class="danger">🗑 清空当天</button>
+  <button onclick="exportData()">📤 导出备份</button>
+  <button onclick="importData()">📥 导入数据</button>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-box kaoyan"></span> 考研</div>
+    <div class="legend-item"><span class="legend-box ielts"></span> 雅思</div>
+    <div class="legend-item"><span class="legend-box sleep"></span> 睡眠</div>
+    <div class="legend-item"><span class="legend-box current"></span> 当前</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+
+<!-- ════ Supabase SDK ════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script>
+// ╔══════════════════════════════════════════════════════════╗
+// ║  🔧 配置区 — 填入你的 Supabase 项目信息                  ║
+// ║  在 Supabase 控制台 → Settings → API 中可以找到           ║
+// ╚══════════════════════════════════════════════════════════╝
+const SUPABASE_URL = 'https://rxduxmbaubtfkizfiwcg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4ZHV4bWJhdWJ0ZmtpemZpd2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMDE1OTIsImV4cCI6MjEwMTY3NzU5Mn0.9dW2r-58us4SzkOkDHOcrzN4YDLiMzsMGY65IWVBKOk'
+// ───────────────────────────────────────────────────────────
+
+const IS_CONFIGURED = !SUPABASE_URL.includes('xxxxxxxxxxxx') && SUPABASE_KEY.length > 40;
+
+// ═══════════════════════════════════════
+//  Constants
+// ═══════════════════════════════════════
+const SLEEP_START = 0;
+const SLEEP_END   = 6;
+const DAY_START   = 6;
+const DAY_END     = 24;
+const STORAGE_KEY = 'dual_checkin_local';
+
+const DEFAULT_KAOYAN = {
+  6:  '起床 + 晨读（英语/政治）',
+  7:  '早餐 + 英语单词背诵',
+  8:  '政治知识点复习',
+  9:  '政治刷题 / 整理错题',
+  10: '数学 / 专业课（一）',
+  11: '数学真题训练',
+  12: '午餐 · 休息放松',
+  13: '午休',
+  14: '英语阅读理解 + 真题',
+  15: '英语翻译 + 完形填空',
+  16: '专业课（二）复习',
+  17: '专业课笔记整理',
+  18: '晚餐 · 适当运动',
+  19: '数学专项突破',
+  20: '数学模拟卷 / 限时训练',
+  21: '政治主观题背诵',
+  22: '当日复习总结 · 错题回顾',
+  23: '明日计划 · 准备休息',
+};
+
+const DEFAULT_IELTS = {
+  6:  '起床 + 晨跑 / 晨练',
+  7:  '早餐 + 雅思核心词汇',
+  8:  '听力 Section 1-2 精练',
+  9:  '听力 Section 3-4 精练',
+  10: '阅读 Passage 1-2 限时',
+  11: '阅读 Passage 3 + 分析',
+  12: '午餐 · 休息放松',
+  13: '午休',
+  14: '写作 Task 2 大作文',
+  15: '写作 Task 1 小作文',
+  16: '口语 Part 2 话题训练',
+  17: '口语 Part 3 深度讨论',
+  18: '晚餐 · 适当运动',
+  19: '阅读真题限时模拟',
+  20: '听力真题限时模拟',
+  21: '词汇 + 语法查漏补缺',
+  22: '当日错题回顾 · 精听训练',
+  23: '明日计划 · 准备休息',
+};
+
+// ═══════════════════════════════════════
+//  State
+// ═══════════════════════════════════════
+let currentDate  = getTodayStr();
+let allData      = {};          // { date: { hour: { kaoyan, ielts, kaoyanDone, ieltsDone } } }
+let sb     = null;
+let realtimeChan = null;
+let isOnline     = false;
+let editingCell  = null;
+
+// ═══════════════════════════════════════
+//  Helpers
+// ═══════════════════════════════════════
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateDisplay(str) {
+  const [y, m, d] = str.split('-');
+  const wd = ['日','一','二','三','四','五','六'];
+  const day = new Date(+y, +m-1, +d).getDay();
+  return `${y}年${+m}月${+d}日 星期${wd[day]}`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function ensureLocalSlot(date, hour) {
+  if (!allData[date]) allData[date] = {};
+  if (!allData[date][hour]) {
+    allData[date][hour] = { kaoyan: '', ielts: '', kaoyanDone: false, ieltsDone: false };
+  }
+}
+
+function getCurrentHour() {
+  if (currentDate !== getTodayStr()) return -1;
+  return new Date().getHours();
+}
+
+function backupToLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(allData)); } catch(e) {}
+}
+
+function loadFromLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════
+//  Supabase
+// ═══════════════════════════════════════
+function initSupabase() {
+  if (!IS_CONFIGURED) {
+    updateConnStatus('offline', '未配置 Supabase');
+    document.getElementById('onlineHint').innerHTML =
+      '⚠️ 未配置 Supabase · <a href="https://supabase.com" target="_blank" style="color:var(--kaoyan)">去创建项目</a>';
+    return false;
+  }
+
+  // Check CDN loaded
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    console.warn('[initSupabase] Supabase SDK 未加载，回退本地模式');
+    return false;
+  }
+
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    realtime: { params: { eventsPerSecond: 10 } },
+  });
+  return true;
+}
+
+// ── Fetch one day from Supabase ──
+async function fetchDay(date) {
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from('day_slots')
+    .select('*')
+    .eq('date', date)
+    .order('hour');
+  if (error) { console.error('[fetchDay]', error); return null; }
+  return data;
+}
+
+// ── Upsert a single field ──
+async function upsertField(date, hour, field, value) {
+  if (!sb) return;
+  const payload = { date, hour, [field]: value };
+  const { error } = await sb.from('day_slots').upsert(payload, { onConflict: 'date,hour' });
+  if (error) console.error('[upsertField]', error);
+}
+
+// ── Batch upsert all hours for a date ──
+async function batchUpsert(date) {
+  if (!sb) return;
+  const rows = [];
+  for (let h = DAY_START; h < DAY_END; h++) {
+    ensureLocalSlot(date, h);
+    const s = allData[date][h];
+    rows.push({ date, hour: h, kaoyan_task: s.kaoyan, ielts_task: s.ielts, kaoyan_done: s.kaoyanDone, ielts_done: s.ieltsDone });
+  }
+  const { error } = await sb.from('day_slots').upsert(rows, { onConflict: 'date,hour' });
+  if (error) console.error('[batchUpsert]', error);
+}
+
+// ═══════════════════════════════════════
+//  Realtime subscription
+// ═══════════════════════════════════════
+function subscribeRealtime() {
+  if (!sb) return;
+  // Remove old channel
+  if (realtimeChan) { realtimeChan.unsubscribe(); realtimeChan = null; }
+
+  realtimeChan = sb
+    .channel('day_slots_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'day_slots',
+    }, handleRealtimeChange)
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('[realtime] subscribed');
+      }
+    });
+}
+
+function handleRealtimeChange(payload) {
+  const row = payload.new || payload.old;
+  if (!row) return;
+
+  const { date, hour, kaoyan_task, ielts_task, kaoyan_done, ielts_done } = row;
+
+  // Apply to local store
+  ensureLocalSlot(date, hour);
+  allData[date][hour] = {
+    kaoyan: kaoyan_task || '',
+    ielts:  ielts_task  || '',
+    kaoyanDone: !!kaoyan_done,
+    ieltsDone:  !!ielts_done,
+  };
+  backupToLocal();
+
+  // If currently viewing this date, update DOM
+  if (date === currentDate) {
+    if (editingCell && editingCell.hour === hour) {
+      // Don't interrupt — just update backing store
+      return;
+    }
+    updateCellDOM(hour, allData[date][hour]);
+    flashCell(hour, 'kaoyan');
+    flashCell(hour, 'ielts');
+    updateStats();
+  }
+}
+
+// ═══════════════════════════════════════
+//  Init flow
+// ═══════════════════════════════════════
+async function init() {
+  // Step 1: Check CDN
+  if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
+    fallbackToLocal();
+    return;
+  }
+
+  // Step 2: Create client (same way as test page)
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  updateConnStatus('syncing', '连接云端…');
+
+  // Step 3: Test read
+  const today = getTodayStr();
+  let result;
+  try {
+    result = await sb.from('day_slots').select('*').eq('date', today).order('hour');
+  } catch (e) {
+    fallbackToLocal();
+    return;
+  }
+
+  const { data: rows, error } = result || {};
+  if (error || !rows) {
+    fallbackToLocal();
+    return;
+  }
+
+  // Step 4: Success — apply data
+  if (rows.length > 0) {
+    applyServerRows(rows);
+  } else {
+    seedDefaults(today);
+    await sb.from('day_slots').upsert(
+      Object.entries(allData[today] || {}).map(([h, s]) => ({
+        date: today, hour: +h,
+        kaoyan_task: s.kaoyan, ielts_task: s.ielts,
+        kaoyan_done: s.kaoyanDone, ielts_done: s.ieltsDone,
+      })),
+      { onConflict: 'date,hour' }
+    ).then(r => { if (r.error) console.warn('[seed]', r.error); });
+  }
+
+  isOnline = true;
+  updateConnStatus('online', '已连接 · 实时同步');
+  document.getElementById('onlineHint').innerHTML = '☁️ 云端同步中 · 编辑实时共享';
+  render();
+
+  // Step 5: Realtime (fire and forget)
+  try {
+    subscribeRealtime();
+  } catch (e) { console.warn('[realtime]', e); }
+}
+
+function applyServerRows(rows) {
+  for (const row of rows) {
+    if (!allData[row.date]) allData[row.date] = {};
+    allData[row.date][row.hour] = {
+      kaoyan: row.kaoyan_task || '',
+      ielts:  row.ielts_task  || '',
+      kaoyanDone: !!row.kaoyan_done,
+      ieltsDone:  !!row.ielts_done,
+    };
+  }
+  backupToLocal();
+}
+
+function seedDefaults(date) {
+  if (!allData[date]) allData[date] = {};
+  for (let h = DAY_START; h < DAY_END; h++) {
+    allData[date][h] = {
+      kaoyan: DEFAULT_KAOYAN[h] || '',
+      ielts:  DEFAULT_IELTS[h]  || '',
+      kaoyanDone: false,
+      ieltsDone:  false,
+    };
+  }
+  backupToLocal();
+}
+
+async function loadDateFromCloud(date) {
+  if (!sb) return;
+  const rows = await fetchDay(date);
+  if (rows) {
+    applyServerRows(rows);
+  }
+}
+
+function fallbackToLocal() {
+  const local = loadFromLocal();
+  if (local) {
+    for (const date in local) allData[date] = local[date];
+  }
+  // Seed today if empty
+  const today = getTodayStr();
+  if (!allData[today] || Object.keys(allData[today]).length === 0) {
+    seedDefaults(today);
+  }
+  isOnline = false;
+  updateConnStatus('offline', '本地模式');
+  document.getElementById('onlineHint').innerHTML =
+    '💾 本地模式 · <a href="javascript:location.reload()" style="color:var(--kaoyan)">重试连接</a>';
+  render();
+}
+
+// ═══════════════════════════════════════
+//  Connection status UI
+// ═══════════════════════════════════════
+function updateConnStatus(state, label) {
+  const dot   = document.getElementById('connDot');
+  const labelEl = document.getElementById('connLabel');
+  dot.className = 'conn-dot ' + state;
+  labelEl.textContent = label;
+}
+
+// ═══════════════════════════════════════
+//  Render
+// ═══════════════════════════════════════
+function render() {
+  document.getElementById('dateDisplay').textContent = formatDateDisplay(currentDate);
+  ensureLocalSlot(currentDate, DAY_START); // ensure date key exists
+  const currentHour = getCurrentHour();
+
+  const tbody = document.getElementById('tableBody');
+  let html = '';
+
+  // Sleep rows (0:00 – 6:00)
+  for (let h = SLEEP_START; h < SLEEP_END; h++) {
+    const label = `${String(h).padStart(2,'0')}:00 – ${String(h+1).padStart(2,'0')}:00`;
+    html += `<tr class="sleep-row">
+      <td class="cell-time">${label}</td>
+      <td colspan="2"><div class="sleep-badge">😴 睡眠时间</div></td>
+    </tr>`;
+  }
+
+  // Active rows (6:00 – 24:00)
+  for (let h = DAY_START; h < DAY_END; h++) {
+    ensureLocalSlot(currentDate, h);
+    const slot  = allData[currentDate][h];
+    const label = `${String(h).padStart(2,'0')}:00 – ${String(h+1).padStart(2,'0')}:00`;
+    const isCurrent = (h === currentHour);
+    const rowClass  = isCurrent ? 'current-row' : '';
+
+    html += `<tr class="${rowClass}" data-hour="${h}">`;
+    html += `<td class="cell-time">${label}</td>`;
+    html += renderCell(h, 'kaoyan', slot.kaoyan, slot.kaoyanDone, false);
+    html += renderCell(h, 'ielts',  slot.ielts,  slot.ieltsDone,  true);
+    html += '</tr>';
+  }
+
+  tbody.innerHTML = html;
+
+  // Attach listeners
+  tbody.querySelectorAll('.cell-task').forEach(cell => {
+    cell.addEventListener('click', function(e) {
+      if (e.target.classList.contains('done-dot')) {
+        const hour   = +this.dataset.hour;
+        const person = this.dataset.person;
+        toggleDone(hour, person);
+        return;
+      }
+      startEdit(this, +this.dataset.hour, this.dataset.person);
+    });
+  });
+
+  updateStats();
+}
+
+function renderCell(hour, person, text, isDone, isIelts) {
+  const cellClass = isIelts ? 'cell-task ielts-cell' : 'cell-task';
+  const textClass = isDone ? 'task-text done' : (text ? 'task-text' : 'task-text empty');
+  const display   = text || '点击编辑';
+  const dotClass  = isDone ? 'done-dot checked' : 'done-dot';
+  return `<td class="${cellClass}" data-hour="${hour}" data-person="${person}">
+    <div class="task-inner">
+      <span class="${textClass}">${escapeHtml(display)}</span>
+      <span class="${dotClass}" title="标记完成"></span>
+    </div>
+  </td>`;
+}
+
+// ── Update single cell DOM without full render ──
+function updateCellDOM(hour, slot) {
+  for (const person of ['kaoyan', 'ielts']) {
+    const cell = document.querySelector(`td.cell-task[data-hour="${hour}"][data-person="${person}"]`);
+    if (!cell) continue;
+    const text   = slot[person];
+    const isDone = slot[person + 'Done'];
+    const isIelts = person === 'ielts';
+    const textClass = isDone ? 'task-text done' : (text ? 'task-text' : 'task-text empty');
+    const display   = text || '点击编辑';
+    const dotClass  = isDone ? 'done-dot checked' : 'done-dot';
+    cell.innerHTML = `<div class="task-inner">
+      <span class="${textClass}">${escapeHtml(display)}</span>
+      <span class="${dotClass}" title="标记完成"></span>
+    </div>`;
+  }
+}
+
+// ── Flash animation ──
+function flashCell(hour, person) {
+  const cell = document.querySelector(`td.cell-task[data-hour="${hour}"][data-person="${person}"]`);
+  if (!cell) return;
+  cell.classList.add('flash-remote');
+  setTimeout(() => cell.classList.remove('flash-remote'), 800);
+}
+
+// ═══════════════════════════════════════
+//  Editing
+// ═══════════════════════════════════════
+function startEdit(cell, hour, person) {
+  if (editingCell && editingCell.hour === hour && editingCell.person === person) return;
+  if (editingCell) commitEdit();
+
+  ensureLocalSlot(currentDate, hour);
+  const currentText = allData[currentDate][hour][person];
+  editingCell = { hour, person };
+
+  cell.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'task-edit';
+  input.value = currentText;
+  input.placeholder = '输入任务内容…';
+
+  input.addEventListener('blur', () => commitEdit());
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')      { e.preventDefault(); commitEdit(); }
+    if (e.key === 'Escape')     { e.preventDefault(); cancelEdit(); }
+    if (e.key === 'ArrowDown')  { e.preventDefault(); commitEdit(); moveToCell(hour + 1, person); }
+    if (e.key === 'ArrowUp')    { e.preventDefault(); commitEdit(); moveToCell(hour - 1, person); }
+    if (e.key === 'ArrowRight' && person === 'kaoyan') { e.preventDefault(); commitEdit(); moveToCell(hour, 'ielts'); }
+    if (e.key === 'ArrowLeft'  && person === 'ielts')  { e.preventDefault(); commitEdit(); moveToCell(hour, 'kaoyan'); }
+    if (e.key === 'Tab') {
+      e.preventDefault(); commitEdit();
+      if (person === 'kaoyan') moveToCell(hour, 'ielts');
+      else moveToCell(hour + 1, 'kaoyan');
+    }
+  });
+
+  cell.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+function commitEdit() {
+  if (!editingCell) return;
+  const { hour, person } = editingCell;
+  const cell = document.querySelector(`td.cell-task[data-hour="${hour}"][data-person="${person}"]`);
+  if (!cell) { editingCell = null; return; }
+
+  const input = cell.querySelector('.task-edit');
+  if (input) {
+    const newVal = input.value.trim();
+    const oldVal = allData[currentDate][hour][person];
+    if (newVal !== oldVal) {
+      ensureLocalSlot(currentDate, hour);
+      allData[currentDate][hour][person] = newVal;
+      backupToLocal();
+      // Sync to Supabase
+      const dbField = person === 'kaoyan' ? 'kaoyan_task' : 'ielts_task';
+      upsertField(currentDate, hour, dbField, newVal);
+    }
+  }
+  editingCell = null;
+  render();
+}
+
+function cancelEdit() { editingCell = null; render(); }
+
+function moveToCell(hour, person) {
+  if (hour < DAY_START || hour >= DAY_END) return;
+  const cell = document.querySelector(`td.cell-task[data-hour="${hour}"][data-person="${person}"]`);
+  if (cell) cell.click();
+}
+
+// ═══════════════════════════════════════
+//  Toggle done
+// ═══════════════════════════════════════
+function toggleDone(hour, person) {
+  ensureLocalSlot(currentDate, hour);
+  const key = person === 'kaoyan' ? 'kaoyanDone' : 'ieltsDone';
+  const newVal = !allData[currentDate][hour][key];
+  allData[currentDate][hour][key] = newVal;
+  backupToLocal();
+
+  const dbField = person === 'kaoyan' ? 'kaoyan_done' : 'ielts_done';
+  upsertField(currentDate, hour, dbField, newVal);
+  render();
+}
+
+// ═══════════════════════════════════════
+//  Stats
+// ═══════════════════════════════════════
+function updateStats() {
+  let kaoyanDone = 0, ieltsDone = 0, kaoyanTotal = 0, ieltsTotal = 0;
+  for (let h = DAY_START; h < DAY_END; h++) {
+    const s = allData[currentDate]?.[h];
+    if (!s) continue;
+    if (s.kaoyan) kaoyanTotal++;
+    if (s.ielts)  ieltsTotal++;
+    if (s.kaoyanDone) kaoyanDone++;
+    if (s.ieltsDone)  ieltsDone++;
+  }
+  document.getElementById('statKaoyan').textContent = kaoyanDone;
+  document.getElementById('statIelts').textContent  = ieltsDone;
+  document.getElementById('statKaoyanTotal').textContent = kaoyanTotal;
+  document.getElementById('statIeltsTotal').textContent  = ieltsTotal;
+}
+
+// ═══════════════════════════════════════
+//  Date navigation
+// ═══════════════════════════════════════
+async function changeDate(delta) {
+  const [y, m, d] = currentDate.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + delta);
+  currentDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  if (editingCell) commitEdit();
+
+  // Load from Supabase if available
+  if (sb && !allData[currentDate]) {
+    await loadDateFromCloud(currentDate);
+  }
+  // If still no data (offline or no cloud data), seed empty
+  if (!allData[currentDate] || Object.keys(allData[currentDate]).length === 0) {
+    // Only auto-fill defaults for today or future
+    if (currentDate >= getTodayStr()) {
+      seedDefaults(currentDate);
+    } else {
+      allData[currentDate] = {};
+    }
+  }
+  render();
+}
+
+function goToday() {
+  currentDate = getTodayStr();
+  if (editingCell) commitEdit();
+  render();
+}
+
+// ═══════════════════════════════════════
+//  Reset / Clear
+// ═══════════════════════════════════════
+function resetDefaults() {
+  if (!confirm('将当天的内容恢复为默认考研和雅思作息模板？\n\n这会覆盖当前内容。')) return;
+  if (editingCell) commitEdit();
+
+  seedDefaults(currentDate);
+  backupToLocal();
+  if (sb) batchUpsert(currentDate);
+  render();
+  toast('✅ 已恢复默认模板');
+}
+
+async function clearDay() {
+  if (!confirm('确定要清空当天的所有打卡内容吗？此操作不可撤销。')) return;
+  if (editingCell) commitEdit();
+
+  allData[currentDate] = {};
+  for (let h = DAY_START; h < DAY_END; h++) {
+    ensureLocalSlot(currentDate, h);
+    allData[currentDate][h] = { kaoyan: '', ielts: '', kaoyanDone: false, ieltsDone: false };
+  }
+  backupToLocal();
+  if (sb) await batchUpsert(currentDate);
+  render();
+  toast('🗑 已清空当天内容');
+}
+
+// ═══════════════════════════════════════
+//  Export / Import
+// ═══════════════════════════════════════
+function exportData() {
+  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `双人打卡_${currentDate}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📤 数据已导出');
+}
+
+function importData() { document.getElementById('importFile').click(); }
+
+async function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (typeof imported !== 'object') throw new Error('格式错误');
+      if (!confirm(`即将导入 ${Object.keys(imported).length} 天的数据。\n\n选择"确定"将合并到现有数据中。`)) return;
+
+      for (const date in imported) {
+        allData[date] = imported[date];
+      }
+      backupToLocal();
+
+      // Sync to Supabase
+      if (sb) {
+        for (const date in imported) {
+          const rows = [];
+          for (const hour in imported[date]) {
+            const s = imported[date][hour];
+            rows.push({ date, hour: +hour, kaoyan_task: s.kaoyan, ielts_task: s.ielts, kaoyan_done: s.kaoyanDone, ielts_done: s.ieltsDone });
+          }
+          if (rows.length > 0) {
+            await sb.from('day_slots').upsert(rows, { onConflict: 'date,hour' });
+          }
+        }
+        toast('📥 数据已导入并同步到云端');
+      } else {
+        toast('📥 数据已导入（本地模式）');
+      }
+
+      if (editingCell) commitEdit();
+      render();
+    } catch (err) {
+      alert('导入失败：文件格式不正确。');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ═══════════════════════════════════════
+//  Toast
+// ═══════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════════════════════
+//  Keyboard shortcuts
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'ArrowLeft')  { e.preventDefault(); changeDate(-1); }
+  if (e.ctrlKey && e.key === 'ArrowRight') { e.preventDefault(); changeDate(1);  }
+  if (e.ctrlKey && e.key === 't')          { e.preventDefault(); goToday();      }
+  if (e.key === 'Escape' && editingCell)   { cancelEdit(); }
+});
+
+// ═══════════════════════════════════════
+//  Start
+// ═══════════════════════════════════════
+init();
+
+// 5 秒超时回退：如果云端一直没反应，切本地模式
+setTimeout(() => {
+  if (!isOnline) {
+    console.warn('[init] 云端连接超时，切换到本地模式');
+    sb = null;
+    fallbackToLocal();
+  }
+}, 5000);
+
+// Hourly auto-refresh for current-time highlight
+(function scheduleHourRefresh() {
+  const now = new Date();
+  const ms = (60 - now.getMinutes()) * 60_000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  setTimeout(() => { render(); scheduleHourRefresh(); }, ms + 1000);
+})();
+</script>
+
+</body>
+</html>
