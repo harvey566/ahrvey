@@ -6,185 +6,212 @@
 <title>双人打卡表 — 考研 · 雅思</title>
 <style>
   :root {
-    --kaoyan:       #4A6FA5;
-    --kaoyan-light: #EBF0F7;
-    --ielts:        #4A9E7B;
-    --ielts-light:  #EDF7F2;
-    --sleep:        #F5F5F5;
-    --text:         #2C2C2C;
-    --text-dim:     #999;
-    --border:       #E8E8E8;
-    --bg:           #FAFAFA;
-    --card:         #FFFFFF;
-    --current:      #FFF9E6;
-    --radius:       8px;
-    --shadow:       0 1px 3px rgba(0,0,0,.06);
+    --math:     #5B8DEE;  /* 📐 数学 */
+    --english:  #E89540;  /* 🔤 英语 */
+    --politics: #E06060;  /* 🚩 政治 */
+    --major:    #8875C0;  /* 📖 专业课 */
+    --kaoyan:   #4A6FA5;
+    --ielts:    #4A9E7B;
+    --done-bg:  #F4F4F4;
+    --done-text:#B0B0B0;
+    --sleep:    #F2F3F5;
+    --text:     #2C2C2C;
+    --text-dim: #999;
+    --border:   #E8E8E8;
+    --bg:       #FAFAFA;
+    --card:     #FFFFFF;
+    --current:  #FFF8EC;
+    --radius:   8px;
+    --shadow:   0 1px 3px rgba(0,0,0,.05);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
     font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
-    background: var(--bg); color: var(--text);
-    line-height: 1.5; min-height: 100vh;
+    background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh;
   }
 
-  /* Header */
+  /* ── Header ── */
   .header {
     background: var(--card); border-bottom: 1px solid var(--border);
-    padding: 14px 24px; display: flex; align-items: center;
+    padding: 12px 24px; display: flex; align-items: center;
     justify-content: space-between; flex-wrap: wrap; gap: 10px;
     position: sticky; top: 0; z-index: 10; box-shadow: var(--shadow);
   }
-  .header-left { display:flex; align-items:center; gap:16px; }
-  .header-title { font-size:20px; font-weight:700; letter-spacing:.5px; }
+  .header-left { display:flex; align-items:center; gap:14px; }
+  .header-title { font-size:19px; font-weight:700; }
   .header-title .kaoyan-dot { color: var(--kaoyan); }
   .header-title .ielts-dot  { color: var(--ielts);  }
-  .header-title .sep { color:#CCC; margin:0 6px; }
+  .header-title .sep        { color: #CCC; margin:0 5px; }
 
   .conn-status {
-    display:flex; align-items:center; gap:6px;
-    font-size:12px; padding:4px 10px; border-radius:12px;
-    background:#F5F5F5; white-space:nowrap;
+    display:flex; align-items:center; gap:5px; font-size:11px;
+    padding:3px 10px; border-radius:10px; background:#F5F5F5; white-space:nowrap;
   }
-  .conn-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-  .conn-dot.online  { background:#4CAF50; box-shadow:0 0 4px #4CAF50; }
+  .conn-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .conn-dot.online  { background:#4CAF50; box-shadow:0 0 3px #4CAF50; }
   .conn-dot.offline { background:#CCC; }
   .conn-dot.syncing { background:#FFB74D; animation:pulse .8s infinite; }
   @keyframes pulse { 50% { opacity:0.4; } }
 
-  .date-nav { display:flex; align-items:center; gap:8px; }
+  .date-nav { display:flex; align-items:center; gap:6px; }
   .date-nav button {
-    width:34px; height:34px; border:1px solid var(--border);
-    border-radius:var(--radius); background:var(--card);
-    cursor:pointer; font-size:16px; display:flex;
-    align-items:center; justify-content:center; transition:.15s; color:var(--text);
+    width:32px; height:32px; border:1px solid var(--border);
+    border-radius:6px; background:var(--card); cursor:pointer;
+    font-size:14px; display:flex; align-items:center; justify-content:center;
+    transition:.15s; color:var(--text);
   }
   .date-nav button:hover { background:#F0F0F0; }
-  .date-nav .date-display { font-weight:600; font-size:15px; min-width:130px; text-align:center; }
-  .btn-today { font-size:13px !important; width:auto !important; padding:0 12px !important; color:var(--kaoyan) !important; font-weight:600 !important; }
+  .date-nav .date-display { font-weight:600; font-size:14px; min-width:120px; text-align:center; }
+  .btn-today { font-size:12px !important; width:auto !important; padding:0 10px !important; color:var(--kaoyan) !important; font-weight:600 !important; }
 
-  /* Stats bar */
+  /* ── Stats ── */
   .stats-bar {
-    display:flex; gap:20px; padding:10px 24px;
-    font-size:13px; color:var(--text-dim); align-items:center;
+    display:flex; gap:16px; padding:8px 24px; font-size:12px; color:var(--text-dim); align-items:center;
   }
-  .stat-item { display:flex; align-items:center; gap:6px; }
-  .stat-dot { width:8px; height:8px; border-radius:2px; display:inline-block; }
+  .stat-item { display:flex; align-items:center; gap:5px; }
+  .stat-dot { width:7px; height:7px; border-radius:2px; display:inline-block; }
   .stat-dot.kaoyan { background:var(--kaoyan); }
   .stat-dot.ielts  { background:var(--ielts);  }
   .stat-num { font-weight:700; color:var(--text); }
 
-  /* Table */
+  /* ── Sub legend in stats ── */
+  .sub-legend { display:flex; gap:12px; margin-left:auto; }
+  .sub-legend span { display:flex; align-items:center; gap:3px; font-size:11px; }
+  .sub-bar { width:10px; height:3px; border-radius:2px; display:inline-block; }
+  .sub-bar.math     { background:var(--math);     }
+  .sub-bar.english  { background:var(--english);  }
+  .sub-bar.politics { background:var(--politics); }
+  .sub-bar.major    { background:var(--major);    }
+
+  /* ── Table ── */
   .table-wrap {
     margin:0 24px 24px; background:var(--card);
     border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
   }
-  .table-scroll { overflow-x:auto; max-height:calc(100vh - 190px); overflow-y:auto; }
-  table { width:100%; border-collapse:collapse; min-width:640px; table-layout:fixed; }
+  .table-scroll { overflow-x:auto; max-height:calc(100vh - 180px); overflow-y:auto; }
+  table { width:100%; border-collapse:collapse; min-width:660px; table-layout:fixed; }
   thead th {
     position:sticky; top:0; background:var(--card); z-index:2;
-    padding:14px 12px; font-size:13px; font-weight:700;
-    text-align:center; border-bottom:2px solid var(--border); letter-spacing:.5px;
+    padding:12px 10px; font-size:13px; font-weight:700;
+    text-align:center; border-bottom:2px solid var(--border);
   }
-  thead th.col-time   { width:80px;  color:var(--text-dim); }
-  thead th.col-kaoyan { width:auto;  color:var(--kaoyan); background:var(--kaoyan-light); }
-  thead th.col-ielts  { width:auto;  color:var(--ielts);  background:var(--ielts-light);  }
+  thead th.col-time   { width:80px; color:var(--text-dim); }
+  thead th.col-kaoyan { width:auto; color:var(--kaoyan); background:#F3F6FA; }
+  thead th.col-ielts  { width:auto; color:var(--ielts);  background:#F3F8F5; }
   thead th .col-icon {
-    display:inline-block; width:18px; height:18px; line-height:18px;
-    border-radius:50%; font-size:11px; color:#fff; margin-right:4px; vertical-align:-2px;
+    display:inline-block; width:16px; height:16px; line-height:16px;
+    border-radius:4px; font-size:10px; color:#fff; margin-right:4px; vertical-align:-2px;
   }
   thead th .col-icon.kaoyan { background:var(--kaoyan); }
   thead th .col-icon.ielts  { background:var(--ielts);  }
 
-  tbody td { padding:0; border-bottom:1px solid var(--border); height:52px; transition:background .3s; }
-  tbody tr.sleep-row td { background:var(--sleep); height:36px; }
-  tbody tr.sleep-row .cell-time { color:#CCC; font-size:11px; }
+  /* ── Row styles ── */
+  tbody td { padding:0; border-bottom:1px solid #F0F0F0; height:54px; vertical-align:middle; }
+  tbody tr.sleep-row td { background:var(--sleep); height:34px; }
+  tbody tr.sleep-row .cell-time { color:#C8C8C8; font-size:10px; }
   tbody tr.current-row td { background:var(--current) !important; }
-  tbody tr.current-row td.cell-time { font-weight:700; }
+  tbody tr.current-row td.cell-time { font-weight:700; color:#C8960C; }
 
   td.cell-time {
-    text-align:center; font-size:12px; color:var(--text-dim);
-    white-space:nowrap; padding:8px 6px !important; width:80px;
+    text-align:center; font-size:11px; color:var(--text-dim);
+    white-space:nowrap; padding:6px 4px !important; width:80px;
     font-variant-numeric:tabular-nums;
   }
+
+  /* ── Task cell ── */
   td.cell-task { cursor:pointer; padding:0 !important; position:relative; }
-  td.cell-task:hover .task-inner { background:rgba(0,0,0,.03); }
-
-  /* Remote flash */
-  td.cell-task.flash-remote .task-inner {
-    animation:flashPulse .8s ease-out; border-radius:3px;
-  }
-  @keyframes flashPulse {
-    0%   { box-shadow:inset 0 0 0 0 rgba(74,111,165,.3); }
-    50%  { box-shadow:inset 0 0 0 20px rgba(74,111,165,.15); }
-    100% { box-shadow:inset 0 0 0 0 rgba(74,111,165,0); }
-  }
-
-  .task-inner {
+  td.cell-task .task-inner {
     display:flex; align-items:center; justify-content:center;
-    height:100%; min-height:52px; padding:4px 24px 4px 8px;
-    transition:background .15s; position:relative;
+    height:100%; min-height:54px; padding:6px 22px 6px 6px;
+    transition:all .15s; position:relative;
+    border-left: 3px solid transparent;
   }
-  .task-text { font-size:13px; text-align:center; color:var(--text); pointer-events:none; word-break:break-all; }
-  .task-text.done  { color:#AAA; text-decoration:line-through; }
-  .task-text.empty { color:#DDD; font-style:italic; font-size:12px; }
+  td.cell-task:hover .task-inner { background:rgba(0,0,0,.02); }
 
+  /* ── Subject accent border ── */
+  td[data-subject="math"]     .task-inner { border-left-color: var(--math);     }
+  td[data-subject="english"]  .task-inner { border-left-color: var(--english);  }
+  td[data-subject="politics"] .task-inner { border-left-color: var(--politics); }
+  td[data-subject="major"]    .task-inner { border-left-color: var(--major);    }
+
+  /* ── Task text ── */
+  .task-text {
+    font-size:13px; text-align:center; color:var(--text);
+    pointer-events:none; word-break:break-all; transition:color .2s;
+  }
+  .task-text.empty {
+    color:#D5D5D5; font-style:italic; font-size:11px;
+  }
+
+  /* ── Done state ── */
+  td.cell-task.is-done .task-inner {
+    background: var(--done-bg) !important;
+    border-left-color: #E0E0E0 !important;
+  }
+  td.cell-task.is-done .task-text {
+    color: var(--done-text); text-decoration: line-through;
+  }
+  td.cell-task.is-done:hover .task-inner { background:#EEEEEE !important; }
+
+  /* ── Done dot ── */
   .done-dot {
-    position:absolute; top:6px; right:6px; width:16px; height:16px;
-    border-radius:50%; border:2px solid #DDD; background:#fff;
+    position:absolute; top:8px; right:8px; width:15px; height:15px;
+    border-radius:50%; border:2px solid #D5D5D5; background:#fff;
     cursor:pointer; transition:.15s; flex-shrink:0;
   }
   .done-dot.checked { border-color:#4CAF50; background:#4CAF50; }
   .done-dot.checked::after {
-    content:'✓'; color:#fff; font-size:10px;
+    content:'✓'; color:#fff; font-size:9px;
     position:absolute; top:-1px; left:2px; font-weight:700;
   }
-  td.cell-task:hover .done-dot { border-color:#BBB; }
+  td.cell-task.is-done .done-dot { opacity:0.5; }
 
+  /* ── Inline edit ── */
   .task-edit {
-    width:100%; height:100%; min-height:52px; border:2px solid var(--kaoyan);
+    width:100%; height:100%; min-height:54px; border:2px solid var(--kaoyan);
     border-radius:2px; font-size:13px; text-align:center; font-family:inherit;
     padding:4px 8px; outline:none; resize:none; background:#fff; color:var(--text);
   }
   td.ielts-cell .task-edit { border-color:var(--ielts); }
 
-  .sleep-badge { font-size:11px; color:#CCC; text-align:center; letter-spacing:2px; }
-
-  /* Footer */
-  .footer-bar { display:flex; gap:10px; padding:0 24px 24px; flex-wrap:wrap; }
-  .footer-bar button {
-    padding:8px 18px; border:1px solid var(--border); border-radius:var(--radius);
-    background:var(--card); cursor:pointer; font-size:13px; transition:.15s; color:var(--text);
+  /* ── Remote flash ── */
+  td.cell-task.flash-remote .task-inner {
+    animation:flashPulse .8s ease-out;
   }
-  .footer-bar button:hover { background:#F0F0F0; }
+  @keyframes flashPulse {
+    0%   { box-shadow:inset 0 0 0 0 rgba(74,111,165,.25); }
+    50%  { box-shadow:inset 0 0 0 24px rgba(74,111,165,.10); }
+    100% { box-shadow:inset 0 0 0 0 rgba(74,111,165,0); }
+  }
+
+  /* ── Sleep ── */
+  .sleep-badge { font-size:10px; color:#D0D0D0; text-align:center; letter-spacing:3px; }
+
+  /* ── Footer ── */
+  .footer-bar { display:flex; gap:8px; padding:0 24px 24px; flex-wrap:wrap; }
+  .footer-bar button {
+    padding:7px 16px; border:1px solid var(--border); border-radius:6px;
+    background:var(--card); cursor:pointer; font-size:12px; transition:.15s; color:var(--text);
+  }
+  .footer-bar button:hover { background:#F5F5F5; }
   .footer-bar button.danger { color:#E57373; }
   .footer-bar button.danger:hover { background:#FFF0F0; border-color:#FFCDD2; }
-  .footer-bar .legend {
-    margin-left:auto; display:flex; align-items:center; gap:16px;
-    font-size:12px; color:var(--text-dim);
-  }
-  .legend-item { display:flex; align-items:center; gap:4px; }
-  .legend-box {
-    width:12px; height:12px; border-radius:3px; display:inline-block;
-  }
-  .legend-box.kaoyan  { background:var(--kaoyan-light); border:1px solid var(--kaoyan); }
-  .legend-box.ielts   { background:var(--ielts-light);  border:1px solid var(--ielts);  }
-  .legend-box.sleep   { background:var(--sleep);        border:1px solid #DDD;          }
-  .legend-box.current { background:var(--current);      border:1px solid #F0D86E;       }
 
-  /* Toast */
+  /* ── Toast ── */
   .toast {
     position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
     background:#333; color:#fff; padding:10px 24px; border-radius:20px;
-    font-size:13px; z-index:100; opacity:0; transition:opacity .3s; pointer-events:none;
+    font-size:12px; z-index:100; opacity:0; transition:opacity .3s; pointer-events:none;
   }
   .toast.show { opacity:1; }
 
   @media (max-width:600px) {
-    .header { padding:10px 12px; }
-    .header-title { font-size:16px; }
-    .table-wrap { margin:0 6px 12px; }
-    .stats-bar { padding:6px 12px; gap:10px; font-size:11px; }
-    .footer-bar { padding:0 6px 12px; }
+    .header { padding:8px 10px; }
+    .header-title { font-size:15px; }
+    .table-wrap { margin:0 4px 10px; }
+    .stats-bar { padding:6px 10px; gap:10px; font-size:10px; flex-wrap:wrap; }
+    .sub-legend { width:100%; margin-left:0; }
+    .footer-bar { padding:0 4px 10px; }
     td.cell-task .task-text { font-size:11px; }
   }
 </style>
@@ -221,6 +248,12 @@
   <div class="stat-item">
     <span class="stat-dot ielts"></span> 雅思完成
     <span class="stat-num" id="statIelts">0</span>/<span id="statIeltsTotal">18</span>
+  </div>
+  <div class="sub-legend">
+    <span><span class="sub-bar math"></span>数学</span>
+    <span><span class="sub-bar english"></span>英语</span>
+    <span><span class="sub-bar politics"></span>政治</span>
+    <span><span class="sub-bar major"></span>专业课</span>
   </div>
   <div class="stat-item" style="margin-left:auto;" id="onlineHint">
     💡 点击格子编辑 · 点击圆圈 ✓ 打卡
@@ -740,12 +773,22 @@ function render() {
   updateStats();
 }
 
+function detectSubject(text) {
+  if (!text) return '';
+  if (text.includes('📐')) return 'math';
+  if (text.includes('🔤')) return 'english';
+  if (text.includes('🚩')) return 'politics';
+  if (text.includes('📖')) return 'major';
+  return '';
+}
+
 function renderCell(hour, person, text, isDone, isIelts) {
-  const cellClass = isIelts ? 'cell-task ielts-cell' : 'cell-task';
+  const cellClass = (isIelts ? 'cell-task ielts-cell' : 'cell-task') + (isDone ? ' is-done' : '');
   const textClass = isDone ? 'task-text done' : (text ? 'task-text' : 'task-text empty');
   const display   = text || '点击编辑';
   const dotClass  = isDone ? 'done-dot checked' : 'done-dot';
-  return `<td class="${cellClass}" data-hour="${hour}" data-person="${person}">
+  const subject   = detectSubject(text);
+  return `<td class="${cellClass}" data-hour="${hour}" data-person="${person}" data-subject="${subject}">
     <div class="task-inner">
       <span class="${textClass}">${escapeHtml(display)}</span>
       <span class="${dotClass}" title="标记完成"></span>
@@ -760,10 +803,12 @@ function updateCellDOM(hour, slot) {
     if (!cell) continue;
     const text   = slot[person];
     const isDone = slot[person + 'Done'];
-    const isIelts = person === 'ielts';
     const textClass = isDone ? 'task-text done' : (text ? 'task-text' : 'task-text empty');
     const display   = text || '点击编辑';
     const dotClass  = isDone ? 'done-dot checked' : 'done-dot';
+    const subject   = detectSubject(text);
+    cell.className = (person === 'ielts' ? 'cell-task ielts-cell' : 'cell-task') + (isDone ? ' is-done' : '');
+    cell.setAttribute('data-subject', subject);
     cell.innerHTML = `<div class="task-inner">
       <span class="${textClass}">${escapeHtml(display)}</span>
       <span class="${dotClass}" title="标记完成"></span>
