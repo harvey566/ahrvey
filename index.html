@@ -107,6 +107,12 @@
 
   /* ── Row styles ── */
   tbody td { padding:0; border-bottom:1px solid #F0F0F0; height:54px; vertical-align:middle; }
+
+  /* ── 早中晚分区底色 ── */
+  tbody tr.morning td  { background:#FFFDF8; }
+  tbody tr.noon td     { background:#FFFEFC; }
+  tbody tr.evening td  { background:#F9FAFD; }
+
   tbody tr.sleep-row td { background:var(--sleep); height:34px; }
   tbody tr.sleep-row .cell-time { color:#C8C8C8; font-size:10px; }
   tbody tr.current-row td { background:var(--current) !important; }
@@ -155,16 +161,18 @@
 
   /* ── Done dot ── */
   .done-dot {
-    position:absolute; top:8px; right:8px; width:15px; height:15px;
-    border-radius:50%; border:2px solid #D5D5D5; background:#fff;
+    position:absolute; top:50%; right:10px; transform:translateY(-50%);
+    width:22px; height:22px;
+    border-radius:50%; border:2px solid #D0D0D0; background:#fff;
     cursor:pointer; transition:.15s; flex-shrink:0;
   }
   .done-dot.checked { border-color:#4CAF50; background:#4CAF50; }
   .done-dot.checked::after {
-    content:'✓'; color:#fff; font-size:9px;
-    position:absolute; top:-1px; left:2px; font-weight:700;
+    content:'✓'; color:#fff; font-size:13px;
+    position:absolute; top:0; left:4px; font-weight:700; line-height:22px;
   }
-  td.cell-task.is-done .done-dot { opacity:0.5; }
+  .done-dot:hover { border-color:#AAA; }
+  td.cell-task.is-done .done-dot { opacity:0.4; }
 
   /* ── Inline edit ── */
   .task-edit {
@@ -746,7 +754,8 @@ function render() {
     const slot  = allData[currentDate][h];
     const label = `${String(h).padStart(2,'0')}:00 – ${String(h+1).padStart(2,'0')}:00`;
     const isCurrent = (h === currentHour);
-    const rowClass  = isCurrent ? 'current-row' : '';
+    const part = h < 12 ? 'morning' : h < 18 ? 'noon' : 'evening';
+    const rowClass = [isCurrent ? 'current-row' : '', part].filter(Boolean).join(' ');
 
     html += `<tr class="${rowClass}" data-hour="${h}">`;
     html += `<td class="cell-time">${label}</td>`;
