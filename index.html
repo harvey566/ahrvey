@@ -108,10 +108,10 @@
   /* ── Row styles ── */
   tbody td { padding:0; border-bottom:1px solid #F0F0F0; height:54px; vertical-align:middle; }
 
-  /* ── 早中晚分区底色 ── */
-  tbody tr.morning td  { background:#FFFDF8; }
-  tbody tr.noon td     { background:#FFFEFC; }
-  tbody tr.evening td  { background:#F9FAFD; }
+  /* ── 早中晚分区底色（更明显的区分） ── */
+  tbody tr.morning td  { background:#FFF4E0; }  /* 早晨：暖橙色 */
+  tbody tr.noon td     { background:#FFFEF6; }  /* 中午：亮米色 */
+  tbody tr.evening td  { background:#EEF0FA; }  /* 晚上：淡蓝紫色 */
 
   tbody tr.sleep-row td { background:var(--sleep); height:34px; }
   tbody tr.sleep-row .cell-time { color:#C8C8C8; font-size:10px; }
@@ -318,8 +318,8 @@ const IS_CONFIGURED = !SUPABASE_URL.includes('xxxxxxxxxxxx') && SUPABASE_KEY.len
 //  Constants
 // ═══════════════════════════════════════
 const SLEEP_START = 0;
-const SLEEP_END   = 6;
-const DAY_START   = 6;
+const SLEEP_END   = 7;
+const DAY_START   = 7;
 const DAY_END     = 24;
 const STORAGE_KEY = 'dual_checkin_local';
 
