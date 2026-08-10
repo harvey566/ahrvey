@@ -537,10 +537,18 @@ async function fetchDay(date) {
   return data;
 }
 
-// ── Upsert a single field ──
+// ── Upsert a single field（带上完整行数据，防止覆盖其他列） ──
 async function upsertField(date, hour, field, value) {
   if (!sb) return;
-  const payload = { date, hour, [field]: value };
+  ensureLocalSlot(date, hour);
+  const slot = allData[date][hour];
+  const payload = {
+    date, hour,
+    kaoyan_task: field === 'kaoyan_task' ? value : (slot.kaoyan || ''),
+    ielts_task:  field === 'ielts_task'  ? value : (slot.ielts  || ''),
+    kaoyan_done: field === 'kaoyan_done' ? value : !!slot.kaoyanDone,
+    ielts_done:  field === 'ielts_done'  ? value : !!slot.ieltsDone,
+  };
   const { error } = await sb.from('day_slots').upsert(payload, { onConflict: 'date,hour' });
   if (error) console.error('[upsertField]', error);
 }
