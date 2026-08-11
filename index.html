@@ -618,16 +618,31 @@ function handleRealtimeChange(payload) {
 }
 
 // ═══════════════════════════════════════
-//  Init flow
+//  Init flow（修复版：先加载 localStorage，再查云端）
 // ═══════════════════════════════════════
 async function init() {
+  // 🔧 Step 0: 始终先加载 localStorage 中的本地数据（防止云端无数据时丢失编辑）
+  const local = loadFromLocal();
+  if (local) {
+    for (const date in local) allData[date] = local[date];
+  }
+
   // Step 1: Check CDN
   if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
-    fallbackToLocal();
+    // 云端不可用，直接用本地数据；如果没有数据则填充模板
+    const today = getTodayStr();
+    if (!allData[today] || Object.keys(allData[today]).length === 0) {
+      seedDefaults(today);
+    }
+    isOnline = false;
+    updateConnStatus('offline', '本地模式');
+    document.getElementById('onlineHint').innerHTML =
+      '💾 本地模式 · <a href="javascript:location.reload()" style="color:var(--kaoyan)">重试连接</a>';
+    render();
     return;
   }
 
-  // Step 2: Create client (same way as test page)
+  // Step 2: Create client
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   updateConnStatus('syncing', '连接云端…');
 
@@ -637,21 +652,40 @@ async function init() {
   try {
     result = await sb.from('day_slots').select('*').eq('date', today).order('hour');
   } catch (e) {
-    fallbackToLocal();
+    // 云端请求失败，但本地数据已经在 allData 中了
+    if (!allData[today] || Object.keys(allData[today]).length === 0) {
+      seedDefaults(today);
+    }
+    isOnline = false;
+    updateConnStatus('offline', '本地模式');
+    document.getElementById('onlineHint').innerHTML =
+      '💾 本地模式 · <a href="javascript:location.reload()" style="color:var(--kaoyan)">重试连接</a>';
+    render();
     return;
   }
 
   const { data: rows, error } = result || {};
   if (error || !rows) {
-    fallbackToLocal();
+    // 云端查询出错，但本地数据已经在 allData 中
+    if (!allData[today] || Object.keys(allData[today]).length === 0) {
+      seedDefaults(today);
+    }
+    isOnline = false;
+    updateConnStatus('offline', '本地模式');
+    document.getElementById('onlineHint').innerHTML =
+      '💾 本地模式 · <a href="javascript:location.reload()" style="color:var(--kaoyan)">重试连接</a>';
+    render();
     return;
   }
 
   // Step 4: Success — apply data
   if (rows.length > 0) {
+    // 云端有数据：云端优先，覆盖本地
     applyServerRows(rows);
-  } else {
+  } else if (!allData[today] || Object.keys(allData[today]).length === 0) {
+    // 云端无数据 + 本地也无数据 → 首次使用，填充模板
     seedDefaults(today);
+    // 把模板数据同步到云端
     await sb.from('day_slots').upsert(
       Object.entries(allData[today] || {}).map(([h, s]) => ({
         date: today, hour: +h,
@@ -660,6 +694,17 @@ async function init() {
       })),
       { onConflict: 'date,hour' }
     ).then(r => { if (r.error) console.warn('[seed]', r.error); });
+  } else {
+    // 云端无数据 但 本地有数据 → 把本地数据推送到云端（用户之前的编辑）
+    console.log('[init] 云端无今日数据，将本地数据推送到云端');
+    await sb.from('day_slots').upsert(
+      Object.entries(allData[today] || {}).map(([h, s]) => ({
+        date: today, hour: +h,
+        kaoyan_task: s.kaoyan, ielts_task: s.ielts,
+        kaoyan_done: s.kaoyanDone, ielts_done: s.ieltsDone,
+      })),
+      { onConflict: 'date,hour' }
+    ).then(r => { if (r.error) console.warn('[push]', r.error); });
   }
 
   isOnline = true;
@@ -945,7 +990,7 @@ function updateStats() {
 }
 
 // ═══════════════════════════════════════
-//  Date navigation
+//  Date navigation（修复版：先查本地，再查云端）
 // ═══════════════════════════════════════
 async function changeDate(delta) {
   const [y, m, d] = currentDate.split('-').map(Number);
@@ -954,19 +999,45 @@ async function changeDate(delta) {
   currentDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
   if (editingCell) commitEdit();
 
-  // Load from Supabase if available
-  if (sb && !allData[currentDate]) {
+  // 🔧 确保当前日期的本地数据已加载（防止导航丢失之前的编辑）
+  let hasLocal = false;
+  if (!allData[currentDate] || Object.keys(allData[currentDate]).length === 0) {
+    // 尝试从 localStorage 恢复（可能是之前编辑过但未在 allData 中）
+    const local = loadFromLocal();
+    if (local && local[currentDate] && Object.keys(local[currentDate]).length > 0) {
+      allData[currentDate] = local[currentDate];
+      hasLocal = true;
+    }
+  } else {
+    hasLocal = true;
+  }
+
+  // 尝试从云端加载（云端数据优先）
+  if (sb) {
     await loadDateFromCloud(currentDate);
   }
-  // If still no data (offline or no cloud data), seed empty
+
+  // 如果仍然没有数据，按规则初始化
   if (!allData[currentDate] || Object.keys(allData[currentDate]).length === 0) {
-    // Only auto-fill defaults for today or future
     if (currentDate >= getTodayStr()) {
+      // 未来日期：填充模板
       seedDefaults(currentDate);
     } else {
+      // 过去日期：保持空白（用户可能没有编辑过）
       allData[currentDate] = {};
     }
+  } else if (hasLocal && sb && (!allData[currentDate] || Object.keys(allData[currentDate]).length > 0)) {
+    // 本地有数据，尝试推送到云端（防止数据丢失）
+    // 不做 await，后台静默推送
+    const rows = Object.entries(allData[currentDate]).map(([h, s]) => ({
+      date: currentDate, hour: +h,
+      kaoyan_task: s.kaoyan, ielts_task: s.ielts,
+      kaoyan_done: s.kaoyanDone, ielts_done: s.ieltsDone,
+    }));
+    sb.from('day_slots').upsert(rows, { onConflict: 'date,hour' })
+      .then(r => { if (r.error) console.warn('[push]', r.error); });
   }
+
   render();
 }
 
